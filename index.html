@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Codingua Academy — لوحة التحكم</title>
+  <link rel="stylesheet" href="app.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     AUTH SCREEN
+════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🎓</div>
+      <h1>Codingua</h1>
+      <p>أكاديمية تعليم البرمجة</p>
+    </div>
+    <div id="auth-error" class="auth-error">⚠️ <span id="auth-error-msg"></span></div>
+    <form class="auth-form" id="login-form" autocomplete="off">
+      <div class="form-group">
+        <label for="login-email">البريد الإلكتروني</label>
+        <input type="email" id="login-email" placeholder="example@codingua.com" required />
+      </div>
+      <div class="form-group">
+        <label for="login-password">كلمة المرور</label>
+        <input type="password" id="login-password" placeholder="••••••••" required />
+      </div>
+      <button type="submit" class="btn-auth" id="login-btn">
+        <span id="login-btn-text">تسجيل الدخول</span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     MAIN APP
+════════════════════════════════════ -->
+<div id="app" style="display:none;">
+
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🎓</div>
+      <div class="sidebar-logo-text">
+        <h2>Codingua</h2>
+        <span>Academy Dashboard</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="admin-only-nav">
+        <p class="nav-section-label">الإدارة</p>
+        <div class="nav-item active" data-panel="dashboard-panel">
+          <span class="nav-icon">📊</span><span>لوحة التحليلات</span>
+        </div>
+        <div class="nav-item" data-panel="instructors-panel">
+          <span class="nav-icon">👩‍🏫</span><span>المدرّسون</span>
+        </div>
+      </div>
+      <p class="nav-section-label">المجموعات والطلاب</p>
+      <div class="nav-item" data-panel="groups-panel">
+        <span class="nav-icon">📚</span><span>المجموعات</span>
+      </div>
+      <div class="nav-item" data-panel="students-panel">
+        <span class="nav-icon">🎓</span><span>الطلاب</span>
+      </div>
+      <p class="nav-section-label">التقييمات</p>
+      <div class="nav-item" data-panel="sessions-panel">
+        <span class="nav-icon">📝</span><span>الجلسات والحضور</span>
+      </div>
+      <div class="nav-item" data-panel="evaluation-panel">
+        <span class="nav-icon">⚡</span><span>مصفوفة التقييم</span>
+      </div>
+      <p class="nav-section-label">التقارير</p>
+      <div class="nav-item" data-panel="reports-panel">
+        <span class="nav-icon">📈</span><span>التقارير الشهرية</span>
+        <span class="nav-badge">4</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="sidebar-avatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebar-name">مستخدم</div>
+          <div class="user-role" id="sidebar-role">مدير</div>
+        </div>
+        <button class="btn-logout" id="logout-btn" title="تسجيل الخروج">🚪</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main Content ── -->
+  <main class="main-content">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="btn-mobile-menu" id="mobile-menu-btn">☰</button>
+        <h1 class="page-title" id="page-title">لوحة التحليلات</h1>
+      </div>
+      <div class="topbar-right">
+        <button class="btn-icon" id="theme-toggle" title="تبديل الوضع">🌙</button>
+        <span class="badge badge-blue" id="role-badge">مدير</span>
+      </div>
+    </header>
+
+    <div class="content-area">
+
+      <!-- ════ DASHBOARD ════ -->
+      <section class="panel active" id="dashboard-panel">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon blue">👥</div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-students">—</div>
+              <div class="stat-label">إجمالي الطلاب</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon yellow">📚</div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-groups">—</div>
+              <div class="stat-label">المجموعات النشطة</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon green">👩‍🏫</div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-instructors">—</div>
+              <div class="stat-label">المدرّسون</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon purple">📝</div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-sessions">—</div>
+              <div class="stat-label">الجلسات المسجّلة</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon red">⭐</div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-top-student" style="font-size:1rem;">—</div>
+              <div class="stat-label">نجم الأكاديمية</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ranking tabs -->
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-header" style="flex-wrap:wrap;gap:8px;">
+            <h3 class="card-title">📊 ترتيب الطلاب</h3>
+            <div class="ranking-tabs">
+              <button class="ranking-tab active" data-tab="lifetime">مجموع الكل</button>
+              <button class="ranking-tab" data-tab="cycle">الدورة الحالية</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="chart-container"><canvas id="rankingChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">📅 إحصائيات الحضور</h3></div>
+            <div class="card-body"><div class="chart-container"><canvas id="attendanceChart"></canvas></div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">🏅 توزيع الشارات</h3></div>
+            <div class="card-body"><div class="chart-container"><canvas id="badgesChart"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">🏆 أفضل الطلاب</h3></div>
+          <div class="card-body" id="top-students-list">
+            <div class="loading-state"><div class="spinner"></div>جاري التحميل...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ INSTRUCTORS ════ -->
+      <section class="panel" id="instructors-panel">
+        <div class="section-header">
+          <h2 class="section-title">👩‍🏫 إدارة المدرّسين</h2>
+          <button class="btn btn-primary" id="btn-add-instructor">➕ إضافة مدرّس</button>
+        </div>
+        <div class="card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>الاسم الكامل</th>
+                  <th>البريد الإلكتروني</th>
+                  <th>المجموعات المُسنَدة</th>
+                  <th>الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="instructors-tbody">
+                <tr><td colspan="4"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ GROUPS ════ -->
+      <section class="panel" id="groups-panel">
+        <div class="section-header">
+          <h2 class="section-title">📚 المجموعات الدراسية</h2>
+          <div class="admin-only-action">
+            <button class="btn btn-primary" id="btn-add-group">➕ إضافة مجموعة</button>
+          </div>
+        </div>
+        <div class="groups-grid" id="groups-grid">
+          <div class="loading-state"><div class="spinner"></div>جاري التحميل...</div>
+        </div>
+      </section>
+
+      <!-- ════ STUDENTS ════ -->
+      <section class="panel" id="students-panel">
+        <div class="section-header">
+          <h2 class="section-title">🎓 الطلاب المسجّلون</h2>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <select class="form-select" id="students-group-filter" style="width:auto;">
+              <option value="">كل المجموعات</option>
+            </select>
+            <input type="text" class="form-input" id="students-search" placeholder="🔍 بحث باسم الطالب..." style="width:200px;" />
+            <button class="btn btn-primary" id="btn-add-student">➕ إضافة طالب</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>اسم الطالب</th><th>العمر</th>
+                  <th>هاتف ولي الأمر</th><th>المجموعة</th>
+                  <th>تاريخ التسجيل</th><th>الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="students-tbody">
+                <tr><td colspan="7"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-bar" id="students-pagination"></div>
+        </div>
+      </section>
+
+      <!-- ════ SESSIONS ════ -->
+      <section class="panel" id="sessions-panel">
+        <div class="section-header">
+          <h2 class="section-title">📝 الجلسات الدراسية</h2>
+          <button class="btn btn-primary" id="btn-add-session">➕ إضافة جلسة</button>
+        </div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;">
+              <label class="field-label">تصفية حسب المجموعة</label>
+              <select class="form-select" id="sessions-group-filter">
+                <option value="">كل المجموعات</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>رقم الجلسة</th><th>المجموعة</th>
+                  <th>التاريخ</th><th>الموضوع</th><th>الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="sessions-tbody">
+                <tr><td colspan="5"><div class="loading-state"><div class="spinner"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-bar" id="sessions-pagination"></div>
+        </div>
+      </section>
+
+      <!-- ════ EVALUATION MATRIX ════ -->
+      <section class="panel" id="evaluation-panel">
+        <div class="section-header">
+          <h2 class="section-title">⚡ مصفوفة التقييم التفاعلية</h2>
+        </div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-body">
+            <div class="form-row form-row-2">
+              <div>
+                <label class="field-label">اختر المجموعة</label>
+                <select class="form-select" id="eval-group-select">
+                  <option value="">— اختر مجموعة —</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label">اختر الجلسة</label>
+                <select class="form-select" id="eval-session-select" disabled>
+                  <option value="">— اختر جلسة —</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="eval-matrix-container" style="display:none;">
+          <div class="eval-header-bar">
+            <div>
+              <span class="badge badge-blue" id="eval-group-label">المجموعة</span>
+              <span class="badge badge-green" id="eval-session-label" style="margin-right:8px;">الجلسة</span>
+            </div>
+            <button class="btn btn-success btn-lg" id="btn-save-evaluations">
+              💾 حفظ جميع التقييمات
+            </button>
+          </div>
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-body" style="display:flex;flex-wrap:wrap;gap:12px;">
+              <span class="badge badge-green">✅ الحضور +10</span>
+              <span class="badge badge-blue">💬 المشاركة +5</span>
+              <span class="badge badge-blue">⚙️ التطبيق +15</span>
+              <span class="badge badge-yellow">📖 الواجب +20</span>
+              <span class="badge badge-purple">💡 الإبداع +10</span>
+              <span class="badge badge-red">⏰ تأخر -5</span>
+              <span class="badge badge-red">❌ غياب الواجب -10</span>
+            </div>
+          </div>
+          <div class="eval-matrix-wrapper">
+            <table class="eval-matrix" id="eval-matrix-table">
+              <colgroup>
+                <col style="width:180px;">
+                <col style="width:80px;"><col style="width:80px;"><col style="width:80px;">
+                <col style="width:80px;"><col style="width:80px;"><col style="width:80px;">
+                <col style="width:100px;"><col style="width:90px;">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>اسم الطالب</th>
+                  <th class="col-header-points">✅ حضور<br><small>+10</small></th>
+                  <th class="col-header-points">💬 مشاركة<br><small>+5</small></th>
+                  <th class="col-header-points">⚙️ تطبيق<br><small>+15</small></th>
+                  <th class="col-header-points">📖 واجب<br><small>+20</small></th>
+                  <th class="col-header-points">💡 إبداع<br><small>+10</small></th>
+                  <th class="col-header-penalty">⏰ تأخر<br><small>-5</small></th>
+                  <th class="col-header-penalty">❌ غياب واجب<br><small>-10</small></th>
+                  <th>المجموع</th>
+                </tr>
+              </thead>
+              <tbody id="eval-matrix-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="eval-empty-state" class="empty-state">
+          <div class="empty-icon">⚡</div>
+          <p>اختر مجموعة وجلسة لبدء التقييم</p>
+        </div>
+      </section>
+
+      <!-- ════ REPORTS ════ -->
+      <section class="panel" id="reports-panel">
+        <div class="section-header">
+          <h2 class="section-title">📈 التقارير الشهرية (كل 4 جلسات)</h2>
+        </div>
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-body">
+            <div class="form-row form-row-2">
+              <div>
+                <label class="field-label">اختر المجموعة</label>
+                <select class="form-select" id="report-group-select">
+                  <option value="">— اختر مجموعة —</option>
+                </select>
+              </div>
+              <div>
+                <label class="field-label">الدورة (كل 4 جلسات)</label>
+                <select class="form-select" id="report-cycle-select" disabled>
+                  <option value="">— اختر الدورة —</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary" id="btn-generate-report" disabled>
+              🔄 توليد التقرير
+            </button>
+          </div>
+        </div>
+        <div id="reports-container"></div>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+</div><!-- /app -->
+
+<!-- ════════════════════════════════
+     MODALS
+════════════════════════════════════ -->
+
+<!-- Add/Edit Instructor Modal -->
+<div class="modal-overlay" id="modal-instructor">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="instructor-modal-title">➕ إضافة مدرّس جديد</h2>
+      <button class="btn-icon modal-close" data-modal="modal-instructor">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div>
+          <label class="field-label">الاسم الكامل</label>
+          <input type="text" class="form-input" id="inst-name" placeholder="اسم المدرّس" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label class="field-label">البريد الإلكتروني</label>
+          <input type="email" class="form-input" id="inst-email" placeholder="email@codingua.com" dir="ltr" />
+        </div>
+      </div>
+      <div class="form-row" id="inst-password-row">
+        <div>
+          <label class="field-label">كلمة المرور المؤقتة</label>
+          <input type="password" class="form-input" id="inst-password" placeholder="••••••••" dir="ltr" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label class="field-label">المجموعات المُسنَدة</label>
+          <div id="inst-groups-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;"></div>
+        </div>
+      </div>
+      <input type="hidden" id="inst-edit-id" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost modal-close" data-modal="modal-instructor">إلغاء</button>
+      <button class="btn btn-primary" id="btn-save-instructor">حفظ المدرّس</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Group Modal -->
+<div class="modal-overlay" id="modal-group">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="group-modal-title">➕ إضافة مجموعة جديدة</h2>
+      <button class="btn-icon modal-close" data-modal="modal-group">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div>
+          <label class="field-label">اسم المجموعة</label>
+          <input type="text" class="form-input" id="group-name" placeholder="مثال: مجموعة الثلاثاء" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label class="field-label">اسم الكورس</label>
+          <input type="text" class="form-input" id="group-course" placeholder="مثال: Python Basics" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label class="field-label">المدرّس المسؤول</label>
+          <select class="form-select" id="group-instructor">
+            <option value="">— اختر مدرّساً —</option>
+          </select>
+        </div>
+      </div>
+      <input type="hidden" id="group-edit-id" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost modal-close" data-modal="modal-group">إلغاء</button>
+      <button class="btn btn-primary" id="btn-save-group">حفظ المجموعة</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Student Modal -->
+<div class="modal-overlay" id="modal-student">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="student-modal-title">➕ إضافة طالب جديد</h2>
+      <button class="btn-icon modal-close" data-modal="modal-student">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row form-row-2">
+        <div>
+          <label class="field-label">اسم الطالب</label>
+          <input type="text" class="form-input" id="student-name" placeholder="الاسم الكامل" />
+        </div>
+        <div>
+          <label class="field-label">العمر</label>
+          <input type="number" class="form-input" id="student-age" placeholder="12" min="5" max="25" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label class="field-label">رقم هاتف ولي الأمر</label>
+          <input type="tel" class="form-input" id="student-phone" placeholder="+966xxxxxxxxx" dir="ltr" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label class="field-label">المجموعة الدراسية</label>
+          <select class="form-select" id="student-group">
+            <option value="">— اختر مجموعة —</option>
+          </select>
+        </div>
+      </div>
+      <input type="hidden" id="student-edit-id" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost modal-close" data-modal="modal-student">إلغاء</button>
+      <button class="btn btn-primary" id="btn-save-student">حفظ الطالب</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Session Modal -->
+<div class="modal-overlay" id="modal-session">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">➕ إضافة جلسة دراسية</h2>
+      <button class="btn-icon modal-close" data-modal="modal-session">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row form-row-2">
+        <div>
+          <label class="field-label">المجموعة</label>
+          <select class="form-select" id="session-group">
+            <option value="">— اختر مجموعة —</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">رقم الجلسة</label>
+          <input type="number" class="form-input" id="session-number" placeholder="1" min="1" />
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div>
+          <label class="field-label">تاريخ الجلسة</label>
+          <input type="date" class="form-input" id="session-date" dir="ltr" />
+        </div>
+        <div>
+          <label class="field-label">موضوع الجلسة</label>
+          <input type="text" class="form-input" id="session-topic" placeholder="مثال: Variables & Data Types" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost modal-close" data-modal="modal-session">إلغاء</button>
+      <button class="btn btn-primary" id="btn-save-session">حفظ الجلسة</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header">
+      <h2 class="modal-title">⚠️ تأكيد الحذف</h2>
+      <button class="btn-icon modal-close" data-modal="modal-confirm">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-msg" style="color:var(--text-secondary);line-height:1.8;">هل أنت متأكد من الحذف؟</p>
+      <div id="confirm-warning" style="display:none;margin-top:12px;padding:10px 14px;background:var(--danger-light);border-radius:var(--radius-sm);font-size:0.83rem;color:var(--danger);"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost modal-close" data-modal="modal-confirm">إلغاء</button>
+      <button class="btn btn-danger" id="btn-confirm-delete">تأكيد الحذف</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

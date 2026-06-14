@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ───────────────────────────────────────────────
+    function isAuth()       { return request.auth != null; }
+    function uid()          { return request.auth.uid; }
+    function userDoc()      { return get(/databases/$(database)/documents/users/$(uid())).data; }
+    function isAdmin()      { return isAuth() && userDoc().role == 'admin'; }
+    function isInstructor() { return isAuth() && userDoc().role == 'instructor'; }
+    function assignedGroups() { return userDoc().assignedGroups; }
+
+    // Instructor is assigned to this group
+    function ownsGroup(groupId) {
+      return isInstructor() && groupId in assignedGroups();
+    }
+
+    // ─── Users ─────────────────────────────────────────────────
+    // Admins manage all users; each user can read their own doc
+    match /users/{userId} {
+      allow read:   if isAuth() && (uid() == userId || isAdmin());
+      allow create: if isAdmin();
+      allow update: if isAdmin()
+                    || (uid() == userId && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    // ─── Groups ────────────────────────────────────────────────
+    // Admins full CRUD; instructors read their assigned groups only
+    match /groups/{groupId} {
+      allow read:   if isAdmin()
+                    || (isInstructor() && groupId in assignedGroups());
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ─── Students ──────────────────────────────────────────────
+    // Admins full CRUD; instructors read/write students in their groups
+    match /students/{studentId} {
+      allow read:   if isAdmin()
+                    || (isInstructor() && ownsGroup(resource.data.groupId));
+      allow create: if isAdmin()
+                    || (isInstructor() && ownsGroup(request.resource.data.groupId));
+      allow update: if isAdmin()
+                    || (isInstructor() && ownsGroup(resource.data.groupId)
+                        && ownsGroup(request.resource.data.groupId));
+      allow delete: if isAdmin();
+    }
+
+    // ─── Sessions ──────────────────────────────────────────────
+    match /sessions/{sessionId} {
+      allow read:   if isAdmin()
+                    || (isInstructor() && ownsGroup(resource.data.groupId));
+      allow create: if isAdmin()
+                    || (isInstructor() && ownsGroup(request.resource.data.groupId));
+      allow update: if isAdmin()
+                    || (isInstructor() && ownsGroup(resource.data.groupId));
+      allow delete: if isAdmin();
+    }
+
+    // ─── Evaluations ───────────────────────────────────────────
+    // Instructors can only read/write evaluations they created
+    match /evaluations/{evaluationId} {
+      allow read:   if isAdmin()
+                    || (isInstructor() && resource.data.instructorId == uid());
+      allow create: if (isAdmin() || isInstructor())
+                    && request.resource.data.instructorId == uid();
+      allow update: if isAdmin()
+                    || (isInstructor() && resource.data.instructorId == uid());
+      allow delete: if isAdmin();
+    }
+  }
+}
