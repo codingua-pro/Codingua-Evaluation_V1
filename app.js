@@ -77,10 +77,7 @@ const state = {
   studentsPage:   1,
   sessionsPage:   1,
   studentsFilter: '',
-  studentsSearch: '',
-  // onSnapshot unsubscribe handles — one per active listener
-  _evalUnsubscribe:     null,   // live listener on the current session's evaluations
-  _globalEvalUnsub:     null    // live listener on all evaluations (for dashboard/reports)
+  studentsSearch: ''
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -207,9 +204,6 @@ auth.onAuthStateChanged(async user => {
       await initApp();
     } catch(e) { console.error('[Auth]',e); showToast('خطأ في تحميل البيانات.','error'); }
   } else {
-    // Cancel any live Firestore listeners before clearing state
-    if (state._evalUnsubscribe)  { state._evalUnsubscribe();  state._evalUnsubscribe  = null; }
-    if (state._globalEvalUnsub)  { state._globalEvalUnsub();  state._globalEvalUnsub  = null; }
     state.currentUser = null; state.userProfile = null;
     Object.assign(state,{groups:[],students:[],instructors:[],sessions:[],evaluations:[]});
     const a=$('app'), b=$('auth-screen');
@@ -269,27 +263,68 @@ async function loadAllData() {
     // Sessions
     state.sessions = gids.length ? (await inQuery('sessions','groupId',gids))
       .sort((a,b)=>a.sessionNumber-b.sessionNumber) : [];
-    // ── Evaluations ──────────────────────────────────────────────
-    // FIX: evaluations belong to (studentId + sessionId), NOT to the
-    // user who created them. Load by sessionIds so Admin and Instructor
-    // always see the same shared dataset for their accessible groups.
-    // The old role-based filter (.where('instructorId','==',uid)) caused
-    // Admin-saved evals to be invisible to Instructors and vice-versa.
+    // ── Evaluations ─────────────────────────────────────────────
+    // ROOT CAUSE FIX: evaluations are owned by (studentId + sessionId),
+    // NOT by the user who created them.
+    //
+    // OLD (broken):
+    //   Admin:      load ALL evaluations → includes evals with no groupId → OK
+    //   Instructor: load WHERE instructorId == uid → misses Admin-created evals
+    //               AND evaluations without groupId cause permission-denied when
+    //               the Security Rule checks resource.data.groupId
+    //
+    // NEW (correct):
+    //   Both roles: load WHERE sessionId IN [sessions they can access]
+    //   This is role-neutral and matches the Security Rule which checks groupId
+    //   stored in the document — after migration all docs will have it.
+    //
+    // DIAGNOSTIC: log key permission context so console helps debugging
+    console.info('[EvalLoad] uid:', userId, '| role:', role,
+      '| assignedGroups:', JSON.stringify(assignedGroups),
+      '| accessible sessionIds:', state.sessions.length);
+
     const sessionIds = state.sessions.map(s => s.sessionId);
     if (sessionIds.length) {
-      // Chunk because Firestore 'in' is capped at 30 items
       const evResults = [];
       for (let i = 0; i < sessionIds.length; i += 30) {
         const chunk = sessionIds.slice(i, i + 30);
-        const snap  = await db.collection('evaluations')
-                              .where('sessionId', 'in', chunk)
-                              .get();
-        snap.docs.forEach(d => evResults.push({ ...d.data(), evaluationId: d.id }));
+        try {
+          const snap = await db.collection('evaluations')
+                                .where('sessionId', 'in', chunk)
+                                .get();
+          snap.docs.forEach(d => {
+            const ev = { ...d.data(), evaluationId: d.id };
+            // DIAGNOSTIC: warn about documents still missing groupId
+            if (!ev.groupId) {
+              console.warn(
+                '[EvalLoad] ⚠️ Evaluation missing groupId — run migration tool.',
+                'id:', d.id, 'sessionId:', ev.sessionId, 'studentId:', ev.studentId
+              );
+            }
+            evResults.push(ev);
+          });
+        } catch (chunkErr) {
+          // Granular error per chunk — helps isolate which sessionId triggers denial
+          console.error('[EvalLoad] ❌ Permission error loading chunk',
+            chunk, chunkErr.code, chunkErr.message);
+          // Surface a helpful toast only once
+          if (i === 0) {
+            showToast(
+              'خطأ صلاحيات في تحميل التقييمات. ' +
+              'قد تحتاج بعض الوثائق إلى ترحيل (إضافة groupId). ' +
+              'افتح أداة migrate-evaluations.html للإصلاح.',
+              'warning'
+            );
+          }
+        }
       }
       state.evaluations = evResults;
     } else {
       state.evaluations = [];
     }
+    console.info('[EvalLoad] Loaded', state.evaluations.length, 'evaluations.',
+      'Missing groupId:',
+      state.evaluations.filter(ev => !ev.groupId).length);
     // Instructors (admin only)
     if (isAdmin) {
       const s=await db.collection('users').where('role','==','instructor').get();
@@ -848,10 +883,6 @@ if(evalGrpSel) evalGrpSel.addEventListener('change',function(){
   const ss=$('eval-session-select');
   const mc=$('eval-matrix-container');
   const es=$('eval-empty-state');
-
-  // Cancel any active session listener when group changes
-  if (state._evalUnsubscribe) { state._evalUnsubscribe(); state._evalUnsubscribe = null; }
-
   if(ss){ss.innerHTML='<option value="">— اختر جلسة —</option>';ss.disabled=true;}
   if(mc) mc.style.display='none';
   if(es) es.style.display='block';
@@ -871,27 +902,24 @@ if(evalSesSel) evalSesSel.addEventListener('change',function(){
   const groupId=$('eval-group-select')?.value||'';
   const mc=$('eval-matrix-container');
   const es=$('eval-empty-state');
-
-  // ── Cancel any previous live listener ────────────────────────
-  if (state._evalUnsubscribe) { state._evalUnsubscribe(); state._evalUnsubscribe = null; }
-
   if(!sessionId||!groupId) return;
 
-  const group    = state.groups.find(g=>g.groupId===groupId);
-  const session  = state.sessions.find(s=>s.sessionId===sessionId);
-  const students = state.students.filter(s=>s.groupId===groupId);
-  if(!students.length){ showToast('لا يوجد طلاب في هذه المجموعة.','info'); return; }
+  const group=state.groups.find(g=>g.groupId===groupId);
+  const session=state.sessions.find(s=>s.sessionId===sessionId);
+  const students=state.students.filter(s=>s.groupId===groupId);
+  if(!students.length){showToast('لا يوجد طلاب في هذه المجموعة.','info');return;}
 
   const lg=$('eval-group-label');   if(lg) lg.textContent=group?group.groupName:'';
   const ls=$('eval-session-label'); if(ls) ls.textContent=session?`جلسة ${session.sessionNumber}`:'';
 
-  // ── Render the skeleton rows first (checkboxes all unchecked) ─
+  const existMap={};
+  state.evaluations.filter(ev=>ev.sessionId===sessionId).forEach(ev=>{ existMap[ev.studentId]=ev; });
+
   const tbody=$('eval-matrix-tbody');
   if(tbody){
-    tbody.innerHTML = students.map(student=>{
-      const chk = v => v ? 'checked' : '';
-      // Read from state.evaluations for initial paint; listener will refresh immediately
-      const ev  = state.evaluations.find(e=>e.sessionId===sessionId&&e.studentId===student.studentId)||{};
+    tbody.innerHTML=students.map(student=>{
+      const ev=existMap[student.studentId]||{};
+      const chk=v=>v?'checked':'';
       return `<tr id="row-${student.studentId}" data-student-id="${student.studentId}">
         <td><strong>${student.studentName}</strong></td>
         <td class="eval-checkbox"><input type="checkbox" class="ev-attendance"    ${chk(ev.attendance)}     onchange="recalcRow('${student.studentId}')" /></td>
@@ -906,52 +934,8 @@ if(evalSesSel) evalSesSel.addEventListener('change',function(){
     }).join('');
     students.forEach(s=>recalcRow(s.studentId));
   }
-
   if(mc) mc.style.display='block';
   if(es) es.style.display='none';
-
-  // ── FIX: Start real-time listener scoped to this ONE session ──
-  // This is the core fix: both Admin and Instructor subscribe to
-  // evaluations WHERE sessionId == currentSession.
-  // When either role saves, ALL open clients update automatically.
-  state._evalUnsubscribe = db.collection('evaluations')
-    .where('sessionId', '==', sessionId)
-    .onSnapshot(snap => {
-      // Merge the fresh session evals into state.evaluations
-      const freshEvals = snap.docs.map(d => ({ ...d.data(), evaluationId: d.id }));
-
-      // Remove stale entries for this session, then add fresh ones
-      state.evaluations = [
-        ...state.evaluations.filter(ev => ev.sessionId !== sessionId),
-        ...freshEvals
-      ];
-
-      // Repaint checkboxes — but ONLY if the user is not currently editing
-      // (i.e., no checkbox in the table has focus). This prevents overwriting
-      // a mid-edit state when a save is still in flight.
-      const tableHasFocus = tbody && tbody.querySelector('input:focus');
-      if (!tableHasFocus && tbody) {
-        freshEvals.forEach(ev => {
-          const row = document.getElementById(`row-${ev.studentId}`);
-          if (!row) return;
-          const set = (cls, val) => {
-            const el = row.querySelector(cls);
-            if (el && el.checked !== !!val) el.checked = !!val;
-          };
-          set('.ev-attendance',    ev.attendance);
-          set('.ev-participation', ev.participation);
-          set('.ev-application',   ev.application);
-          set('.ev-homework',      ev.homework);
-          set('.ev-creativity',    ev.creativity);
-          set('.ev-late',          ev.latePenalty);
-          set('.ev-nohw',          ev.homeworkPenalty);
-          recalcRow(ev.studentId);
-        });
-      }
-    }, err => {
-      console.error('[EvalListener]', err);
-      showToast('خطأ في المزامنة الفورية: ' + err.message, 'error');
-    });
 });
 
 window.recalcRow=(studentId)=>{
@@ -978,28 +962,17 @@ if(btnSaveEvals) btnSaveEvals.addEventListener('click', async()=>{
   if(!uid){showToast('خطأ في المصادقة.','error');return;}
 
   const students=state.students.filter(s=>s.groupId===groupId);
-  if(!students.length) return;
-
-  // ── FIX: Upsert strategy using deterministic document IDs ─────
-  // Document ID = `${studentId}_${sessionId}` — one document per
-  // student per session. This prevents duplicates entirely without
-  // needing a query-first check. Both Admin and Instructor write to
-  // the same deterministic ID so they always update the same doc.
+  const existMap={};
+  state.evaluations.filter(ev=>ev.sessionId===sessionId).forEach(ev=>{ existMap[ev.studentId]=ev; });
 
   const ops=[], saved=[];
-
   students.forEach(student=>{
     const row=document.getElementById(`row-${student.studentId}`); if(!row) return;
     const get=cls=>row.querySelector(cls)?.checked||false;
-
-    const attendance      = get('.ev-attendance');
-    const participation   = get('.ev-participation');
-    const application     = get('.ev-application');
-    const homework        = get('.ev-homework');
-    const creativity      = get('.ev-creativity');
-    const latePenalty     = get('.ev-late');
-    const homeworkPenalty = get('.ev-nohw');
-
+    const attendance=get('.ev-attendance'),participation=get('.ev-participation'),
+          application=get('.ev-application'),homework=get('.ev-homework'),
+          creativity=get('.ev-creativity'),latePenalty=get('.ev-late'),
+          homeworkPenalty=get('.ev-nohw');
     let total=0;
     if(attendance)      total+=SCORE_RULES.attendance;
     if(participation)   total+=SCORE_RULES.participation;
@@ -1008,49 +981,39 @@ if(btnSaveEvals) btnSaveEvals.addEventListener('click', async()=>{
     if(creativity)      total+=SCORE_RULES.creativity;
     if(latePenalty)     total+=SCORE_RULES.latePenalty;
     if(homeworkPenalty) total+=SCORE_RULES.homeworkPenalty;
-
-    // Deterministic ID guarantees one doc per student per session.
-    // set() with merge:false is a safe full overwrite (no duplicates).
-    const deterministicId = `${student.studentId}_${sessionId}`;
-    const docRef          = db.collection('evaluations').doc(deterministicId);
-
     const data={
       studentId:    student.studentId,
       sessionId,
-      groupId,                         // stored for easy collection-group queries
+      // groupId is stored in every evaluation so that Firestore Security Rules
+      // can authorise Instructors without a cross-document lookup.
+      // This is the field that was missing in legacy documents and caused
+      // "Missing or insufficient permissions" for Instructors.
+      groupId,
       attendance, participation, application,
       homework, creativity, latePenalty, homeworkPenalty,
       totalPoints:  total,
-      lastEditedBy: uid,               // audit trail — who last touched this row
+      lastEditedBy: uid,
       timestamp:    firebase.firestore.FieldValue.serverTimestamp()
     };
-
-    // Use 'set' (full overwrite) — idempotent and duplicate-proof
-    ops.push({ type:'set', ref:docRef, data });
-    saved.push({ ...data, evaluationId: deterministicId });
+    const ex=existMap[student.studentId];
+    if(ex){
+      ops.push({type:'update',ref:db.collection('evaluations').doc(ex.evaluationId),data});
+      saved.push({...data,evaluationId:ex.evaluationId});
+    } else {
+      const ref=db.collection('evaluations').doc();
+      ops.push({type:'set',ref,data});
+      saved.push({...data,evaluationId:ref.id});
+    }
   });
-
-  // Disable button while saving to prevent double-clicks
-  btnSaveEvals.disabled = true;
-  btnSaveEvals.textContent = '⏳ جاري الحفظ...';
 
   try {
     await batchOps(ops);
-
-    // Merge into local state (the onSnapshot listener will also fire,
-    // but updating locally first gives instant UI feedback)
     saved.forEach(ev=>{
       const idx=state.evaluations.findIndex(x=>x.evaluationId===ev.evaluationId);
       if(idx!==-1) state.evaluations[idx]=ev; else state.evaluations.push(ev);
     });
     showToast('✅ تم حفظ جميع التقييمات!','success');
-  } catch(e){
-    console.error('[Eval save]',e);
-    showToast('خطأ في الحفظ: '+e.message,'error');
-  } finally {
-    btnSaveEvals.disabled = false;
-    btnSaveEvals.innerHTML = '💾 حفظ جميع التقييمات';
-  }
+  } catch(e){console.error('[Eval save]',e);showToast('خطأ في الحفظ: '+e.message,'error');}
 });
 
 // ══════════════════════════════════════════════════════════════
