@@ -195,6 +195,9 @@ const logoutBtn = $('logout-btn');
 if (logoutBtn) logoutBtn.addEventListener('click', ()=>auth.signOut().catch(console.error));
 
 auth.onAuthStateChanged(async user => {
+  // FIX Issue 3: Firebase has resolved — hide splash regardless of outcome
+  hideSplash();
+
   if (user) {
     state.currentUser = user;
     try {
@@ -204,6 +207,7 @@ auth.onAuthStateChanged(async user => {
       await initApp();
     } catch(e) { console.error('[Auth]',e); showToast('خطأ في تحميل البيانات.','error'); }
   } else {
+    // Not authenticated — now safe to show login screen
     state.currentUser = null; state.userProfile = null;
     Object.assign(state,{groups:[],students:[],instructors:[],sessions:[],evaluations:[]});
     const a=$('app'), b=$('auth-screen');
@@ -211,6 +215,16 @@ auth.onAuthStateChanged(async user => {
     if(b) b.style.display='flex';
   }
 });
+
+/** Hide the splash screen with a smooth fade-out */
+function hideSplash() {
+  const splash = $('splash-screen');
+  if (!splash) return;
+  splash.classList.add('splash-fade-out');
+  setTimeout(() => {
+    if (splash.parentNode) splash.remove();
+  }, 400);
+}
 
 // ══════════════════════════════════════════════════════════════
 //  INIT
@@ -377,6 +391,45 @@ function renderDashboard() {
   renderBadgesChart();
   renderAttendanceChart();
   renderTopStudentsList(sorted);
+}
+
+/**
+ * refreshDashboardAfterSave()
+ * Called immediately after evaluations are saved to Firestore.
+ * state.evaluations is already updated in-memory, so this just
+ * re-runs all dashboard computations and re-renders every widget.
+ *
+ * No additional Firestore reads are needed — all data is already
+ * in state. The user sees updated numbers/charts within ~16ms.
+ *
+ * FIX Issue 2: Root cause was that renderDashboard() was only called
+ * once during initApp(). After saving evaluations the in-memory
+ * state.evaluations array was updated but nothing triggered a
+ * re-render of the dashboard widgets, rankings, or stat cards.
+ */
+function refreshDashboardAfterSave() {
+  // Only refresh if the user is admin and the dashboard panel exists
+  if (!state.userProfile || state.userProfile.role !== 'admin') return;
+
+  // ── Stat cards ──────────────────────────────────────────────
+  // These don't change on eval save, but recalculate top-student
+  const s = (id, v) => { const e = $(id); if(e) e.textContent = v; };
+  const totals = computeLifetimeTotals();
+  const sorted = Object.entries(totals).sort((a, b) => b[1].total - a[1].total);
+  if (sorted.length) {
+    const top = state.students.find(x => x.studentId === sorted[0][0]);
+    s('stat-top-student', top ? top.studentName : '—');
+  }
+
+  // ── Charts ──────────────────────────────────────────────────
+  renderRankingChart();      // uses state.evaluations → updated
+  renderBadgesChart();       // uses computeBadges() → updated
+  renderAttendanceChart();   // uses state.evaluations → updated
+
+  // ── Top students list ────────────────────────────────────────
+  renderTopStudentsList(sorted);
+
+  console.info('[Dashboard] Refreshed after evaluation save. Totals recalculated for', sorted.length, 'students.');
 }
 
 /** All-time totals per student */
@@ -1013,6 +1066,13 @@ if(btnSaveEvals) btnSaveEvals.addEventListener('click', async()=>{
       if(idx!==-1) state.evaluations[idx]=ev; else state.evaluations.push(ev);
     });
     showToast('✅ تم حفظ جميع التقييمات!','success');
+
+    // FIX Issue 2: Refresh all dashboard visuals immediately after save.
+    // state.evaluations is already updated in-memory above, so all
+    // compute functions (computeLifetimeTotals, computeBadges, etc.)
+    // will pick up the new values without another Firestore round-trip.
+    refreshDashboardAfterSave();
+
   } catch(e){console.error('[Eval save]',e);showToast('خطأ في الحفظ: '+e.message,'error');}
 });
 
