@@ -15,13 +15,33 @@
 <body>
 
 <!-- ══════════════════════════════════
-     AUTH SCREEN
+     SPLASH / LOADING SCREEN
+     Shown immediately on page load.
+     Hides once Firebase resolves auth state.
+     Prevents the login-flash flicker.
 ════════════════════════════════════ -->
-<div id="auth-screen">
+<div id="splash-screen">
+  <div class="splash-inner">
+    <img src="logo.png" alt="Codingua" class="splash-logo" />
+    <div class="splash-spinner">
+      <div class="splash-dot"></div>
+      <div class="splash-dot"></div>
+      <div class="splash-dot"></div>
+    </div>
+    <p class="splash-text">جاري التحقق من الهوية…</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════
+     AUTH SCREEN
+     Hidden by default (display:none).
+     JS shows it only if user is NOT authenticated.
+════════════════════════════════════ -->
+<div id="auth-screen" style="display:none;">
   <div class="auth-card">
     <div class="auth-logo">
-      <div class="auth-logo-icon">🎓</div>
-      <h1>Codingua</h1>
+      <!-- Official Codingua logo replaces the old 🎓 emoji placeholder -->
+      <img src="logo.png" alt="Codingua" class="auth-logo-img" />
       <p>أكاديمية تعليم البرمجة</p>
     </div>
     <div id="auth-error" class="auth-error">⚠️ <span id="auth-error-msg"></span></div>
@@ -53,7 +73,8 @@
     <!-- FIX [M-03]: Close button inside drawer for mobile -->
     <button class="sidebar-close-btn" id="sidebar-close-btn" aria-label="إغلاق القائمة">✕</button>
     <div class="sidebar-logo">
-      <div class="sidebar-logo-icon">🎓</div>
+      <!-- Official Codingua logo mark (symbol only) in sidebar header -->
+      <img src="logo-mark.png" alt="Codingua" class="sidebar-logo-img" />
       <div class="sidebar-logo-text">
         <h2>Codingua</h2>
         <span>Academy Dashboard</span>
