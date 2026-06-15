@@ -157,64 +157,7 @@ input, select, textarea { font-family: var(--font); }
 }
 
 /* ══════════════════════════════════════════════════════════
-   SPLASH SCREEN  (Issue 3)
-   Shown immediately on page load — hides after Firebase resolves.
-   Prevents the login-screen flash.
-══════════════════════════════════════════════════════════ */
-#splash-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
-  transition: opacity 0.4s ease;
-}
-#splash-screen.splash-fade-out { opacity: 0; pointer-events: none; }
-
-.splash-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 28px;
-}
-
-.splash-logo {
-  width: clamp(160px, 40vw, 260px);
-  height: auto;
-  filter: drop-shadow(0 8px 32px rgba(29,161,242,0.25));
-  animation: splashPulse 2s ease-in-out infinite;
-}
-@keyframes splashPulse {
-  0%, 100% { opacity: 1;    transform: scale(1); }
-  50%       { opacity: 0.85; transform: scale(0.97); }
-}
-
-.splash-spinner { display: flex; gap: 8px; }
-.splash-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  animation: splashDot 1.2s ease-in-out infinite both;
-}
-.splash-dot:nth-child(1) { background: var(--primary);   animation-delay: 0s; }
-.splash-dot:nth-child(2) { background: var(--secondary); animation-delay: 0.2s; }
-.splash-dot:nth-child(3) { background: var(--primary);   animation-delay: 0.4s; }
-@keyframes splashDot {
-  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-  40%           { transform: scale(1.2); opacity: 1; }
-}
-
-.splash-text {
-  font-size: 0.85rem;
-  color: #64748b;
-  font-family: var(--font);
-  letter-spacing: 0.5px;
-}
-
-/* ══════════════════════════════════════════════════════════
-   AUTH SCREEN  (Issue 3: hidden by default, shown by JS)
+   AUTH SCREEN
 ══════════════════════════════════════════════════════════ */
 #auth-screen {
   min-height: 100vh;
@@ -224,6 +167,7 @@ input, select, textarea { font-family: var(--font); }
   background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
   position: relative;
   overflow: hidden;
+  /* FIX [M-19]: safe-area padding */
   padding: max(20px, env(safe-area-inset-top))
            max(20px, env(safe-area-inset-right))
            max(20px, env(safe-area-inset-bottom))
@@ -264,23 +208,18 @@ input, select, textarea { font-family: var(--font); }
   z-index: 1;
 }
 
-/* Issue 1: Official logo replaces emoji placeholder */
-.auth-logo { text-align: center; margin-bottom: 28px; }
-
-.auth-logo-img {
-  width: clamp(150px, 55%, 210px);
-  height: auto;
-  display: block;
-  margin: 0 auto 12px;
-  /* transparent-bg PNG looks clean on dark card */
-  filter: drop-shadow(0 4px 16px rgba(29,161,242,0.2));
+.auth-logo { text-align: center; margin-bottom: 32px; }
+.auth-logo-icon {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  border-radius: var(--radius-lg);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px;
+  font-size: 32px;
+  box-shadow: 0 8px 24px rgba(29,161,242,0.4);
 }
-
-/* Hide legacy emoji icon if still in markup */
-.auth-logo-icon { display: none; }
-
 .auth-logo h1 { font-size: clamp(1.4rem, 4vw, 1.8rem); font-weight: 800; color: #fff; letter-spacing: -0.5px; }
-.auth-logo p  { color: #94a3b8; font-size: 0.9rem; margin-top: 2px; }
+.auth-logo p  { color: #94a3b8; font-size: 0.9rem; margin-top: 4px; }
 .auth-form    { display: flex; flex-direction: column; gap: 16px; }
 .form-group   { display: flex; flex-direction: column; gap: 6px; }
 .form-group label { font-size: 0.85rem; font-weight: 600; color: #94a3b8; }
@@ -389,18 +328,6 @@ input, select, textarea { font-family: var(--font); }
 
 .sidebar-logo-text h2   { font-size: 1.1rem; font-weight: 800; color: #fff; line-height: 1.2; }
 .sidebar-logo-text span { font-size: 0.7rem; color: var(--primary); font-weight: 500; }
-
-/* Issue 1: sidebar logo — real logo mark image */
-.sidebar-logo-img {
-  width: 36px;
-  height: 36px;
-  object-fit: contain;
-  flex-shrink: 0;
-  /* transparent PNG; slightly brighten so it pops on dark sidebar */
-  filter: brightness(1.08) drop-shadow(0 2px 6px rgba(29,161,242,0.3));
-}
-/* Hide old emoji icon */
-.sidebar-logo-icon { display: none; }
 
 /* Close button inside drawer (mobile only) */
 .sidebar-close-btn {
