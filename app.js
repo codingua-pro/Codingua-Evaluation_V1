@@ -1379,28 +1379,109 @@ if(themeBtn) themeBtn.addEventListener('click',()=>{
 });
 
 // ══════════════════════════════════════════════════════════════
-//  SIDEBAR & MODALS
+//  SIDEBAR — Off-canvas drawer system (Mobile UX v4.0)
+//  Fixes: [M-01] z-index, [M-02] body scroll lock,
+//         [M-03] ESC key + smooth animation,
+//         [M-12] hamburger always showing on ≤1024px,
+//         [M-20] tablet collapsible sidebar
 // ══════════════════════════════════════════════════════════════
-$$('.nav-item').forEach(item=>item.addEventListener('click',()=>{
-  const panel=item.dataset.panel; if(!panel) return;
-  setActivePanel(panel);
-  if(panel==='reports-panel') buildDropdowns();
-}));
 
-function closeSidebar(){
-  if(window.innerWidth<=768){
-    $('sidebar')?.classList.remove('open');
-    $('sidebar-overlay')?.classList.remove('open');
-  }
+function isMobileOrTablet() {
+  // Sidebar is off-canvas on both mobile and tablet (≤1024px)
+  return window.innerWidth <= 1024;
 }
 
-const mmbtn=$('mobile-menu-btn');
-if(mmbtn) mmbtn.addEventListener('click',()=>{
-  $('sidebar')?.classList.toggle('open');
-  $('sidebar-overlay')?.classList.toggle('open');
-});
-const sbo=$('sidebar-overlay');
-if(sbo) sbo.addEventListener('click',closeSidebar);
+function openSidebar() {
+  const sidebar  = $('sidebar');
+  const overlay  = $('sidebar-overlay');
+  const menuBtn  = $('mobile-menu-btn');
 
-$$('.modal-close').forEach(btn=>btn.addEventListener('click',()=>{ const m=btn.dataset.modal; if(m) closeModal(m); }));
-$$('.modal-overlay').forEach(ov=>ov.addEventListener('click',e=>{ if(e.target===ov) closeModal(ov.id); }));
+  if (!sidebar) return;
+  sidebar.classList.add('open');
+  if (overlay) overlay.classList.add('open');
+  // FIX [M-02]: lock body scroll
+  document.body.classList.add('sidebar-open');
+  // ARIA
+  if (menuBtn) menuBtn.setAttribute('aria-expanded', 'true');
+  // Move focus into sidebar for accessibility
+  const firstNav = sidebar.querySelector('.nav-item');
+  if (firstNav) firstNav.focus();
+}
+
+function closeSidebar() {
+  const sidebar = $('sidebar');
+  const overlay = $('sidebar-overlay');
+  const menuBtn = $('mobile-menu-btn');
+
+  if (!sidebar) return;
+  sidebar.classList.remove('open');
+  if (overlay) overlay.classList.remove('open');
+  // FIX [M-02]: restore body scroll
+  document.body.classList.remove('sidebar-open');
+  // ARIA
+  if (menuBtn) menuBtn.setAttribute('aria-expanded', 'false');
+}
+
+function toggleSidebar() {
+  const sidebar = $('sidebar');
+  if (!sidebar) return;
+  if (sidebar.classList.contains('open')) closeSidebar();
+  else openSidebar();
+}
+
+// Hamburger button
+const mmbtn = $('mobile-menu-btn');
+if (mmbtn) mmbtn.addEventListener('click', toggleSidebar);
+
+// Sidebar-internal close button (visible on mobile/tablet)
+const sidebarCloseBtn = $('sidebar-close-btn');
+if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeSidebar);
+
+// Overlay click — close drawer
+const sbo = $('sidebar-overlay');
+if (sbo) sbo.addEventListener('click', closeSidebar);
+
+// FIX [M-03]: ESC key closes sidebar AND modals
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  // Close sidebar first if open
+  const sidebar = $('sidebar');
+  if (sidebar?.classList.contains('open')) {
+    closeSidebar();
+    return;
+  }
+  // Then close topmost open modal
+  const openModal = document.querySelector('.modal-overlay.open');
+  if (openModal) closeModal(openModal.id);
+});
+
+// Nav item clicks — close drawer on mobile/tablet after navigation
+$$('.nav-item').forEach(item => item.addEventListener('click', () => {
+  const panel = item.dataset.panel;
+  if (!panel) return;
+  setActivePanel(panel);
+  if (panel === 'reports-panel') buildDropdowns();
+  // Close sidebar on mobile/tablet after selecting a panel
+  if (isMobileOrTablet()) closeSidebar();
+}));
+
+// Close sidebar when viewport resizes above tablet breakpoint
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 1024) {
+    // On desktop the sidebar is always visible — clean up drawer state
+    closeSidebar();
+  }
+}, { passive: true });
+
+// ══════════════════════════════════════════════════════════════
+//  MODALS
+// ══════════════════════════════════════════════════════════════
+$$('.modal-close').forEach(btn => btn.addEventListener('click', () => {
+  const m = btn.dataset.modal;
+  if (m) closeModal(m);
+}));
+
+// Click backdrop to close
+$$('.modal-overlay').forEach(ov => ov.addEventListener('click', e => {
+  if (e.target === ov) closeModal(ov.id);
+}));
